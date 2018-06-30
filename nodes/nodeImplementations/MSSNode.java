@@ -1,6 +1,7 @@
 package projects.chandraToueg.nodes.nodeImplementations;
 
 import java.awt.Color;
+import java.awt.Graphics;
 import java.util.UUID;
 import java.util.Vector;
 
@@ -16,6 +17,7 @@ import projects.chandraToueg.nodes.timers.ProposalReceivalTimer;
 import sinalgo.configuration.Configuration;
 import sinalgo.configuration.CorruptConfigurationEntryException;
 import sinalgo.configuration.WrongConfigurationException;
+import sinalgo.gui.transformation.PositionTransformation;
 import sinalgo.nodes.Node;
 import sinalgo.nodes.messages.Inbox;
 import sinalgo.nodes.messages.Message;
@@ -177,7 +179,6 @@ public class MSSNode extends Node {
 	@Override
 	public void init() {
 		reachableMSSNodes.add(this);
-		setDefaultDrawingSizeInPixels(50);
 	}
 	
 	@Override
@@ -257,11 +258,35 @@ public class MSSNode extends Node {
 			send(new DecisionMessage(this, roundNumber, chosenEstimatedValue, chosenEstimatedValueTimestamp), mssNode);	
 		}
 		timestamp++;
+		commonState = CommonState.Decided;
 		coordinatorState = CoordinatorState.SentDecision;
 	}
 	
 	@Override
 	public Color getColor() {
-		return this == coordinator ? Color.blue : Color.black;
+		switch (commonState) {
+		case CommonState.WaitingForProposal: return Color.blue;
+		case CommonState.WaitingForDecision: return Color.orange;
+		case CommonState.Decided: return Color.magenta;
+		default: return Color.black;
+		}
+	}
+	
+	@Override
+	public void draw(Graphics g, PositionTransformation pt, boolean highlight) {
+		Color backupColor = g.getColor();
+		drawingSizeInPixels = 30;
+		pt.translateToGUIPosition(super.getPosition());
+		int x = pt.guiX - (drawingSizeInPixels >> 1);
+		int y = pt.guiY - (drawingSizeInPixels >> 1);
+		Color color = getColor();
+		if (this == coordinator) {
+			// a highlighted node is surrounded by a red square
+			g.setColor(Color.RED);
+			g.fillRect(x-2, y-2, drawingSizeInPixels+4, drawingSizeInPixels+4);
+		}
+		g.setColor(color);
+		g.fillRect(x, y, drawingSizeInPixels, drawingSizeInPixels);
+		g.setColor(backupColor);
 	}
 }
