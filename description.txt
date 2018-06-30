@@ -1,0 +1,9 @@
+Adaptação do Algoritmo de Chang & Toueg para redes móveis infraestruturadas:
+“Solving The consensus problem in a Mobile Environment”, N. Badache, M. Hurfin, R. Macedo, Publication Interne 1146, IRISA, França
+
+* Rede móvel estruturada, composta de nós móveis (MH) e estações base (MSS)
+* Cada um dos N MH_k propõem um valor v_k e todos os MHs precisam concordar sobre mesmo conjunto de valores
+* MSSs são os representantes de todos os MHs em sua área de cobertura (migração de MHs è necessidade de handover)
+* Todas as MSS possuem o mesmo raio de cobertura, e existem áreas não cobertas
+* MSSs vão coletando os votos dos MHs, executam o algoritmo de consenso, e assim que o conjunto de valores propostos fica estável entram no estado decided , e notificam os MHs do resultado
+* Mostrar quantas rodadas demora a convergência a depender do número de MH, da relação MH/MSS e da frequência de deslocamento
