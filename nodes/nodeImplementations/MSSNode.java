@@ -38,14 +38,14 @@ public class MSSNode extends Node {
 		return Math.ceil((reachableMSSNodes.size() + 1) / 2.0);
 	}
 	
-	private class CommonState {
+	public class CommonState {
 		public static final int Undecided = 0;
 		public static final int WaitingForProposal = 1;
 		public static final int WaitingForDecision = 2;
 		public static final int Decided = 3;
 	}
 	
-	private class CoordinatorState {
+	public class CoordinatorState {
 		public static final int Fresh = 0;
 		public static final int WaitingForEstimates = 1;
 		public static final int WaitingForAcksOrNAcks = 2;
@@ -63,6 +63,7 @@ public class MSSNode extends Node {
 	public UUID decidedValue = null;
 	public int decidedValueTimestamp = -1;
 	boolean hasSentEstimate = false;
+	public FailureDetector failureDetector = new FailureDetector(this);
 	
 	// coordinator-nodes
 	public MSSNode coordinator;
@@ -220,8 +221,11 @@ public class MSSNode extends Node {
 	}
 	
 	public void sendAckOrNAckMessage() {
-		// TODO: implementar um fake failure-detector
-		send(new AckMessage(this, roundNumber), coordinator);
+		if (failureDetector.isCoordinatorHealthy()) {
+			send(new AckMessage(this, roundNumber), coordinator);	
+		} else {
+			send(new NAckMessage(this, roundNumber), coordinator);
+		}
 				
 		commonState = CommonState.WaitingForDecision;
 		timestamp++;
@@ -288,5 +292,18 @@ public class MSSNode extends Node {
 		g.setColor(color);
 		g.fillRect(x, y, drawingSizeInPixels, drawingSizeInPixels);
 		g.setColor(backupColor);
+	}
+	
+	class FailureDetector {
+		MSSNode node;
+		
+		public FailureDetector(MSSNode node) {
+			this.node = node;
+		}
+		
+		// TODO: implementar um fake failure-detector
+		public boolean isCoordinatorHealthy() {
+			return true;
+		}
 	}
 }

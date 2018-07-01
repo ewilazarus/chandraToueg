@@ -10,7 +10,24 @@ public class Edge extends sinalgo.nodes.edges.Edge {
 		if (isMSS2MSSConnection()) {
 			defaultColor = Color.black;
 		} else {
-			defaultColor = Color.green;
+			if (startNode instanceof MSSNode) {
+				MSSNode mn = (MSSNode) startNode;
+				if (mn.commonState == MSSNode.CommonState.Decided)
+					defaultColor = Color.magenta;
+				else {
+					defaultColor = Color.green;
+				}
+			} else if (endNode instanceof MSSNode) {
+				MSSNode mn = (MSSNode) endNode;
+				if (mn.commonState == MSSNode.CommonState.Decided)
+					defaultColor = Color.magenta;
+				else {
+					defaultColor = Color.green;
+				}
+			}
+			else {
+				defaultColor = Color.green;
+			}
 		}
 	}
 	
