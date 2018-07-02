@@ -2,10 +2,13 @@ package projects.chandraToueg.nodes.nodeImplementations;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import java.util.Vector;
 
-import projects.chandraToueg.nodes.edges.Edge;
 import projects.chandraToueg.nodes.messages.AckMessage;
 import projects.chandraToueg.nodes.messages.DecisionMessage;
 import projects.chandraToueg.nodes.messages.EstimateMessage;
@@ -23,6 +26,7 @@ import sinalgo.configuration.CorruptConfigurationEntryException;
 import sinalgo.configuration.WrongConfigurationException;
 import sinalgo.gui.transformation.PositionTransformation;
 import sinalgo.nodes.Node;
+import sinalgo.nodes.edges.Edge;
 import sinalgo.nodes.messages.Inbox;
 import sinalgo.nodes.messages.Message;
 import sinalgo.tools.Tools;
@@ -62,7 +66,7 @@ public class MSSNode extends Node {
 	
 	// common-nodes
 	public int timestamp = 0;
-	public int commonState = CommonState.Undecided;
+	public int commonState = CommonState.WaitingForMHs;
 	public UUID estimatedValue = null;
 	public UUID propsedValue  = null;
 	public int proposedValueTimestamp = -1;
@@ -107,14 +111,17 @@ public class MSSNode extends Node {
 	@Override
 	public void handleMessages(Inbox inbox) {
 		for (Message m : inbox) {
+			Tools.appendToOutput(">>> " + Integer.toString(ID) + " Received: " + m.getClass().getSimpleName() + "\n");
+			
+			// -------------- MH Estimate ---------------
 			if (commonState == CommonState.WaitingForMHs && m instanceof MHEstimateMessage) {
 				MHEstimateMessage mhem = (MHEstimateMessage) m;
 				if (mhem.round < roundNumber) continue;
-				
+								
 				mhEstimateMessages.add(mhem);
 			}
+			// -------------- Proposal ---------------
 			else if (commonState == CommonState.WaitingForProposal && m instanceof ProposalMessage) {
-				Tools.appendToOutput(Integer.toString(ID) + ": " + "Received proposal" + "\n");
 				ProposalMessage pm = (ProposalMessage) m;
 				if (pm.round < roundNumber) continue;
 				
@@ -123,8 +130,8 @@ public class MSSNode extends Node {
 				
 				sendAckOrNAckMessage();
 			}
+			// -------------- Decision ---------------
 			else if (commonState == CommonState.WaitingForDecision && m instanceof DecisionMessage) {
-				Tools.appendToOutput(Integer.toString(ID) + ": " + "Received decision" + "\n");
 				DecisionMessage dm = (DecisionMessage) m;
 				if (dm.round < roundNumber) continue;
 				
@@ -132,12 +139,13 @@ public class MSSNode extends Node {
 				decidedValueTimestamp = dm.maxTimestamp;
 				commonState = CommonState.Decided;
 				
-				for (sinalgo.nodes.edges.Edge e : outgoingConnections) {
+				for (Edge e : outgoingConnections) {
 					if (e.endNode instanceof MHNode) {
 						send(new MHDecisionMessage(this, roundNumber, decidedValue, decidedValueTimestamp), e.endNode);
 					}
 				}
-			} 
+			}
+			// -------------- MH Estimate when already decided ---------------
 			else if (commonState == CommonState.Decided && m instanceof MHEstimateMessage) {
 				MHEstimateMessage mhem = (MHEstimateMessage) m;
 				if (mhem.round < roundNumber) continue;
@@ -146,20 +154,20 @@ public class MSSNode extends Node {
 			}
 			
 			if (this == coordinator) {
+				// -------------- Estimate ---------------
 				if (coordinatorState == CoordinatorState.WaitingForEstimates && m instanceof EstimateMessage) {
-					Tools.appendToOutput(Integer.toString(ID) + ": " + "Received estimate" + "\n");
-					estimateMessages.add((EstimateMessage) m);
+					EstimateMessage em = (EstimateMessage) m;
+					estimateMessages.add(em);
 				}
+				// -------------- (N)Ack ---------------
 				else if (coordinatorState == CoordinatorState.WaitingForAcksOrNAcks) {
 					if (m instanceof AckMessage) {
-						Tools.appendToOutput(Integer.toString(ID) + ": " + "Received ack" + "\n");
 						AckMessage am = (AckMessage) m;
 						if (ackOrNAckmsgCount >= getMajorityMSSNodeCount() || am.round < roundNumber) continue;
 						ackOrNAckmsgCount++;
 						
 						ackMessages.add(am);						
 					} else if (m instanceof NAckMessage) {
-						Tools.appendToOutput(Integer.toString(ID) + ": " + "Recieved nack" + "\n");
 						NAckMessage nam = (NAckMessage) m;
 						if (ackOrNAckmsgCount >= getMajorityMSSNodeCount() || nam.round < roundNumber) continue;
 						ackOrNAckmsgCount++;
@@ -172,11 +180,22 @@ public class MSSNode extends Node {
 		
 		if (this == coordinator) {
 			if (coordinatorState == CoordinatorState.WaitingForEstimates && estimateMessages.size() > getMajorityMSSNodeCount()) {
-				// TODO: pegar mensagem com maior TS
-				EstimateMessage em = estimateMessages.firstElement();
-					
-				chosenEstimatedValue = em.estimatedValue;
-				chosenEstimatedValueTimestamp = em.timestamp;
+				HashMap<UUID, Integer> dict = new HashMap<UUID, Integer>();
+				for (EstimateMessage _m : estimateMessages) {
+					for (UUID uuid : _m.estimatedValues) {
+						dict.put(uuid, _m.timestamp);
+					}
+				}
+				
+				if (dict.size() <= 15) return;
+				
+				Random random = new Random();
+				List<UUID> keys = new ArrayList<UUID>(dict.keySet());
+				UUID randomUUID = keys.get(random.nextInt(keys.size()));
+				int randomUUIDTimestamp = dict.get(randomUUID);
+				
+				chosenEstimatedValue = randomUUID;
+				chosenEstimatedValueTimestamp = randomUUIDTimestamp;
 					
 				sendProposalMessage();
 			}
@@ -196,7 +215,7 @@ public class MSSNode extends Node {
 		}
 		
 		if (commonState == CommonState.WaitingForMHs && !hasBeenWaitingForMSs) {
-			new MHEstimateReceivalTimer(roundNumber).startRelative(10, this);
+			new MHEstimateReceivalTimer(roundNumber).startRelative(20, this);
 			hasBeenWaitingForMSs = true;
 		} else if (commonState == CommonState.Undecided && !hasSentEstimate) {
 			sendEstimateMessage();
@@ -204,19 +223,14 @@ public class MSSNode extends Node {
 		
 		if (this == coordinator && coordinatorState == CoordinatorState.Fresh) {
 			coordinatorState = CoordinatorState.WaitingForEstimates;
-			new EstimateReceivalTimer(roundNumber).startRelative(40, this);
+			new EstimateReceivalTimer(roundNumber).startRelative(50, this);
 		}
 	}
 	
 	public void onMHEstimatesWaitTimeout(int round) {
-		if (round == roundNumber) {
-			// TODO: pegar a com o TS mais alto
-			if (!mhEstimateMessages.isEmpty()) {
-				MHEstimateMessage m = mhEstimateMessages.firstElement();
-				estimatedValue = m.estimatedValue;
-			}
-			commonState = CommonState.Undecided;
-		}
+		commonState = round == roundNumber 
+			? CommonState.Undecided 
+			: CommonState.WaitingForMHs;
 	}
 
 	@Override
@@ -249,7 +263,12 @@ public class MSSNode extends Node {
 	}
 	
 	public void sendEstimateMessage() {
-		send(new EstimateMessage(this, roundNumber), coordinator);
+		Vector<UUID> v = new Vector<>();
+		for (MHEstimateMessage m : mhEstimateMessages) {
+			v.add(m.estimatedValue);
+		}
+				
+		send(new EstimateMessage(this, roundNumber, timestamp, v), coordinator);
 		hasSentEstimate = true;
 		commonState = CommonState.WaitingForProposal;
 		timestamp++;

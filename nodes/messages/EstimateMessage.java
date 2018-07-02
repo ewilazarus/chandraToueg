@@ -1,6 +1,7 @@
 package projects.chandraToueg.nodes.messages;
 
 import java.util.UUID;
+import java.util.Vector;
 
 import projects.chandraToueg.nodes.nodeImplementations.MSSNode;
 import sinalgo.nodes.messages.Message;
@@ -9,21 +10,17 @@ public class EstimateMessage extends Message{
 	public MSSNode origin;
 	public int round;
 	public int timestamp;
-	public UUID estimatedValue;
+	public Vector<UUID> estimatedValues;
 	
-	private EstimateMessage(MSSNode origin, int round, int timestamp, UUID estimatedValue) {
+	public EstimateMessage(MSSNode origin, int round, int timestamp, Vector<UUID> estimatedValues) {
 		this.origin = origin;
 		this.round = round;
 		this.timestamp = timestamp;
-		this.estimatedValue = estimatedValue;
-	}
-	
-	public EstimateMessage(MSSNode origin, int round) {
-		this(origin, round, origin.timestamp, UUID.randomUUID());
+		this.estimatedValues = estimatedValues;
 	}
 
 	@Override
 	public Message clone() {
-		return new EstimateMessage(origin, round, timestamp, estimatedValue);
+		return new EstimateMessage(origin, round, timestamp, estimatedValues);
 	}
 }

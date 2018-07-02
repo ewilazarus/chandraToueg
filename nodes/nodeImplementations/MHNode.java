@@ -12,6 +12,7 @@ import sinalgo.nodes.Node;
 import sinalgo.nodes.edges.Edge;
 import sinalgo.nodes.messages.Inbox;
 import sinalgo.nodes.messages.Message;
+import sinalgo.tools.Tools;
 
 public class MHNode extends Node {
 	public int timestamp = 0;
@@ -48,6 +49,7 @@ public class MHNode extends Node {
 				if (dm.round < roundNumber) continue;
 	
 				state = State.Decided;
+				break;
 			}
 		}
 	}
@@ -66,6 +68,7 @@ public class MHNode extends Node {
 	public void sendEstimate(MSSNode mss) {
 		int roundNumber = MSSNode.roundNumber;
 		send(new MHEstimateMessage(this, roundNumber), mss);
+		//Tools.appendToOutput("! SENT MH Estimate");
 		timestamp++;
 		new MHDecisionReceivalTimer(roundNumber).startRelative(50, this);
 	}

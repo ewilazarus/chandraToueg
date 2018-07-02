@@ -134,7 +134,7 @@
 		<DefaultMessageTransmissionModel value="RandomTime" />
 
 		<!--Default connectivity model used when none is specified-->
-		<DefaultConnectivityModel value="chandraToueg:MSSConnection" />
+		<DefaultConnectivityModel value="chandraToueg:CTConnection" />
 
 		<!--Default distribution model used when none is specified-->
 		<DefaultDistributionModel value="chandraToueg:MSSAvoidRandomDistribution" />
